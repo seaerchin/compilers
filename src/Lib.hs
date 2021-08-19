@@ -11,5 +11,4 @@ someFunc = putStrLn "someFunc"
 
 test :: IO ()
 test = do
-  let parsed = parse expr "" "something"
-  print parsed
+  print "something"
