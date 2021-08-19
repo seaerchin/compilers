@@ -1,5 +1,7 @@
 module Nfa where
 
+-- containers is annoying b/c set doesn't have inbuilt typeclasses but provides functionality in its own lib
+-- means everytime i have to check the hackage docs to see if it exists instead of trusting compiler when it says that it doesn't
 import Data.Set as S
 
 -- provides an implementation of a NFA, using what the paper outlines
@@ -23,8 +25,11 @@ data Move a = Move a Char a | EmptyMove a a
 -- for complex regexes involving symbols, expand them out into the literals and build the nfa from there?
 
 -- given the current set of nodes, what states are reachable given the allowable transitions
-singleMove :: NFA a -> Char -> Set a -> End a
-singleMove = undefined
+singleMove :: (Ord a, Eq a) => NFA a -> Char -> Set a -> End a
+-- map single across a
+-- fold using union into a single set and return
+-- also, this should really be >>= for monad wtf
+singleMove nfa c start = S.foldr' S.union S.empty $ S.map (single nfa c) start
 
 -- what nodes are reachable from the current node given the allowable transitions?
 single :: (Eq a, Ord a) => NFA a -> Char -> a -> End a
@@ -42,3 +47,8 @@ single (NFA inter moves start end) c cur =
 matching :: Eq a => a -> Char -> Move a -> Bool
 matching a c (Move start trans end) = a == start && c == trans
 matching a _ (EmptyMove start end) = a == start
+
+-- given an NFA and a string, finds the possible nodes that can be reached from the NFA
+-- this set of end nodes is distinct (and can possibly overlap fully) w/ the NFA's end nodes
+transition :: Ord a => NFA a -> String -> End a
+transition = undefined
