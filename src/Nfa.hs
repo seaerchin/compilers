@@ -51,4 +51,11 @@ matching a _ (EmptyMove start end) = a == start
 -- given an NFA and a string, finds the possible nodes that can be reached from the NFA
 -- this set of end nodes is distinct (and can possibly overlap fully) w/ the NFA's end nodes
 transition :: Ord a => NFA a -> String -> End a
-transition = undefined
+transition nfa@(NFA inter moves start end) = Prelude.foldr (singleTransition nfa) (singleton start)
+
+-- transits from a start state -> possible end states
+-- iterate through list of all moves and start state
+-- next, find those moves where the start state is equal to our start state
+-- and where the character is equal to what we passed in
+singleTransition :: Ord a => NFA a -> Char -> Set a -> Set a
+singleTransition (NFA _ moves _ _) c start = fromList [end | t <- toList start, Move z char end <- toList moves, z == t, c == char]

@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lib
       Nfa
+      Parser
       Regex
   other-modules:
       Paths_compilers
