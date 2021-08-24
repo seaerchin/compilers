@@ -15,9 +15,9 @@ literals :: Reg -> String
 -- placeholder since we want to signal the presence of an RegEmpty string
 literals RegEmpty = "~"
 literals (RegLiteral s) = [s]
-literals (RegOr a b) = literals a ++ " | " ++ literals b
-literals (RegAnd a b) = literals a ++ " . " ++ literals b
-literals (RegStar reg) = literals reg ++ "*"
+literals (RegOr a b) = literals a ++ "|" ++ literals b
+literals (RegAnd a b) = literals a ++ "." ++ literals b
+literals (RegStar reg) = "(" ++ literals reg ++ ")" ++ "*"
 
 -- checks if the string matches the given regex
 matches :: Reg -> String -> Bool
@@ -48,18 +48,18 @@ fromParsed expr = head $ f [] expr
     f stack (op : rest) = case op of
       PLiteral c -> f (stack ++ [RegLiteral c]) rest
       POr ->
-        let lastElem = last stack
-            secondLast = (last . init) stack
-            rem = (init . init) stack
-            expr = RegOr lastElem secondLast
+        let expr = RegOr lastElem secondLast
          in f (rem ++ [expr]) rest
       PStar ->
-        let expr = last stack in f (init stack ++ [RegStar expr]) rest
+        f (init stack ++ [RegStar lastElem]) rest
       PAnd ->
-        let lastElem = last stack
-            secondLast = (last . init) stack
-            rem = (init . init) stack
-            expr = RegAnd lastElem secondLast
+        let expr = RegAnd lastElem secondLast
          in f (rem ++ [expr]) rest
+      where
+        lastElem = last stack
+        secondLast = (last . init) stack
+        rem = (init . init) stack
 
-test = print . fromParsed . Parser.parse
+-- note case
+-- (ab|cd)e -> (ab | c)de
+test = print . literals . fromParsed . Parser.parse
