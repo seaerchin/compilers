@@ -3,6 +3,7 @@ module Nfa where
 -- containers is annoying b/c set doesn't have inbuilt typeclasses but provides functionality in its own lib
 -- means everytime i have to check the hackage docs to see if it exists instead of trusting compiler when it says that it doesn't
 import Data.Set as S
+import Parser (PostFix, RPN, Reg (RegLiteral))
 
 -- with reference from: https://www.cs.kent.ac.uk/people/staff/sjt/craft2e/regExp.pdf
 -- this is a crude attempt to translate a regex into a nfa
@@ -22,7 +23,7 @@ data NFA a = NFA (Intermediate a) (Moves a) (Start a) (End a)
 
 -- a denotes the state
 -- a move is either a character from 1 state to another (can be the same) or an empty move
-data Move a = Move a Char a | EmptyMove a a
+data Move a = Move a Char a | EmptyMove a a deriving (Ord, Eq)
 
 -- build upon a basic NFA for a simple regex (eg: the literals)
 -- for complex regexes involving symbols, expand them out into the literals and build the nfa from there?
@@ -62,3 +63,16 @@ transition nfa@(NFA inter moves start end) = Prelude.foldr (singleTransition nfa
 -- and where the character is equal to what we passed in
 singleTransition :: Ord a => NFA a -> Char -> Set a -> Set a
 singleTransition (NFA _ moves _ _) c start = fromList [end | t <- toList start, Move z char end <- toList moves, z == t, c == char]
+
+-- had to specify a concrete type :(
+formNFA :: Reg -> NFA Int
+formNFA (RegLiteral c) =
+  let states = S.fromList [0 .. 1]
+      moves =
+        S.fromList
+          [ Move 0 c 1
+          ]
+      start = 0
+      end = S.fromList [1]
+   in NFA states moves start end
+formNFA _ = undefined

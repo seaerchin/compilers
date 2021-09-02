@@ -58,4 +58,4 @@ fromParsed expr = head $ f [] expr
 
 -- note case
 -- (ab|cd)e -> (ab | c)de
-test = print . literals . fromParsed . Parser.parse
+test = print . fromParsed . Parser.parse
