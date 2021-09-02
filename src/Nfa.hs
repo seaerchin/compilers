@@ -4,6 +4,9 @@ module Nfa where
 -- means everytime i have to check the hackage docs to see if it exists instead of trusting compiler when it says that it doesn't
 import Data.Set as S
 
+-- with reference from: https://www.cs.kent.ac.uk/people/staff/sjt/craft2e/regExp.pdf
+-- this is a crude attempt to translate a regex into a nfa
+-- and subsequently, convert the nfa into a dfa
 -- provides an implementation of a NFA, using what the paper outlines
 
 type Intermediate a = Set a

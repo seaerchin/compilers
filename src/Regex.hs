@@ -6,10 +6,6 @@ import Parser (Parsed (And, Tok), ParsedToks, PostFix (PAnd, PLiteral, POr, PSta
 import Text.Parsec
 import Text.Parsec.Char (letter)
 
--- with reference from: https://www.cs.kent.ac.uk/people/staff/sjt/craft2e/regExp.pdf
--- this is a crude attempt to translate a regex into a nfa
--- and subsequently, convert the nfa into a dfa
-
 -- prints all the elements of the given regex
 literals :: Reg -> String
 -- placeholder since we want to signal the presence of an RegEmpty string
