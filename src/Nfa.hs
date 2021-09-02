@@ -3,7 +3,8 @@ module Nfa where
 -- containers is annoying b/c set doesn't have inbuilt typeclasses but provides functionality in its own lib
 -- means everytime i have to check the hackage docs to see if it exists instead of trusting compiler when it says that it doesn't
 import Data.Set as S
-import Parser (PostFix, RPN, Reg (RegLiteral))
+import Parser (PostFix, RPN, Reg (RegLiteral, RegStar), parse)
+import Regex (fromParsed)
 
 -- with reference from: https://www.cs.kent.ac.uk/people/staff/sjt/craft2e/regExp.pdf
 -- this is a crude attempt to translate a regex into a nfa
@@ -19,11 +20,11 @@ type End a = Set a
 type Moves a = Set (Move a)
 
 -- a NFA is 4 things: intermediate states; moves; start state; end states
-data NFA a = NFA (Intermediate a) (Moves a) (Start a) (End a)
+data NFA a = NFA (Intermediate a) (Moves a) (Start a) (End a) deriving (Show)
 
 -- a denotes the state
 -- a move is either a character from 1 state to another (can be the same) or an empty move
-data Move a = Move a Char a | EmptyMove a a deriving (Ord, Eq)
+data Move a = Move a Char a | EmptyMove a a deriving (Ord, Eq, Show)
 
 -- build upon a basic NFA for a simple regex (eg: the literals)
 -- for complex regexes involving symbols, expand them out into the literals and build the nfa from there?
@@ -75,4 +76,30 @@ formNFA (RegLiteral c) =
       start = 0
       end = S.fromList [1]
    in NFA states moves start end
+formNFA (RegStar exp) =
+  let baseNFA = formNFA exp
+   in -- for our new NFA,
+      -- we must allow empty moves from new start -> old start
+      -- we must allow empty moves from old end -> old start
+      -- we must allow empty moves from old end -> new end
+      -- lastly, allow empty moves from new start -> new end
+      case baseNFA of
+        NFA states moves start end ->
+          let newStart = start - 1
+              -- just set the new end state to be 1 bigger than the old
+              newEnd = findMax end + 1
+              newStartOldStart = formEmptyMoves newStart [start]
+              -- need to fold below 2
+              oldEndOldStart = reduceList $ Prelude.map (\oldEnd -> formEmptyMoves oldEnd [start]) (S.toList end)
+              oldEndNewEnd = reduceList $ Prelude.map (\oldEnd -> formEmptyMoves oldEnd [newEnd]) (S.toList end)
+              newStartnewEnd = formEmptyMoves newStart [newEnd]
+           in NFA (S.singleton start `S.union` end `S.union` S.singleton newEnd `S.union` S.singleton newStart) (S.unions [newStartOldStart, newStartnewEnd, oldEndOldStart, oldEndNewEnd]) newStart (S.singleton newEnd)
 formNFA _ = undefined
+
+formEmptyMoves :: (Ord a) => a -> [a] -> Moves a
+formEmptyMoves start = S.fromList . Prelude.map (EmptyMove start)
+
+reduceList :: (Foldable f, Ord a) => f (Moves a) -> Moves a
+reduceList = Prelude.foldr S.union S.empty
+
+mkNFA = print . formNFA . fromParsed . Parser.parse
