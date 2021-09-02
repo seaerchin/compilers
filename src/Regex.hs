@@ -15,8 +15,8 @@ literals :: Reg -> String
 -- placeholder since we want to signal the presence of an RegEmpty string
 literals RegEmpty = "~"
 literals (RegLiteral s) = [s]
-literals (RegOr a b) = literals a ++ "|" ++ literals b
-literals (RegAnd a b) = literals a ++ "." ++ literals b
+literals (RegOr a b) = "(" ++ literals a ++ "|" ++ literals b ++ ")"
+literals (RegAnd a b) = literals a ++ literals b
 literals (RegStar reg) = "(" ++ literals reg ++ ")" ++ "*"
 
 -- checks if the string matches the given regex
