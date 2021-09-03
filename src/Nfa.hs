@@ -2,8 +2,10 @@ module Nfa where
 
 -- containers is annoying b/c set doesn't have inbuilt typeclasses but provides functionality in its own lib
 -- means everytime i have to check the hackage docs to see if it exists instead of trusting compiler when it says that it doesn't
+
+import Data.Char (ord)
 import Data.Set as S
-import Parser (PostFix, RPN, Reg (RegLiteral, RegOr, RegStar), parse)
+import Parser (PostFix, RPN, Reg (RegAnd, RegEmpty, RegLiteral, RegOr, RegStar), parse)
 import Regex (fromParsed)
 
 -- with reference from: https://www.cs.kent.ac.uk/people/staff/sjt/craft2e/regExp.pdf
@@ -68,14 +70,21 @@ singleTransition (NFA _ moves _ _) c start = fromList [end | t <- toList start, 
 -- had to specify a concrete type :(
 formNFA :: Reg -> NFA Int
 formNFA (RegLiteral c) =
-  let states = S.fromList [0 .. 1]
+  let chrRep = ord c
+      states = S.fromList [0, chrRep]
       moves =
         S.fromList
-          [ Move 0 c 1
+          [ Move 0 c chrRep
           ]
       start = 0
-      end = S.fromList [1]
+      end = S.fromList [chrRep]
    in NFA states moves start end
+formNFA RegEmpty =
+  let start = 0
+      end = 1
+      states = S.fromList [start, end]
+      moves = S.singleton (EmptyMove start end)
+   in NFA states moves start (S.singleton end)
 formNFA (RegStar exp) =
   let baseNFA = formNFA exp
    in -- for our new NFA,
@@ -108,7 +117,7 @@ formNFA (RegOr a b) =
       newStates = getStates nfaA `S.union` getStates nfaB `S.union` S.singleton newStart `S.union` S.singleton newEnd
       newMoves = S.unions [reduceList $ Prelude.map getMoves [nfaA, nfaB], newStartOldStart, oldEndNewEnd]
    in NFA newStates newMoves newStart (S.singleton newEnd)
-formNFA _ = undefined
+formNFA (RegAnd a b) = undefined
 
 formEmptyMoves :: (Ord a) => a -> [a] -> Moves a
 formEmptyMoves start = S.fromList . Prelude.map (EmptyMove start)
