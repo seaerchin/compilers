@@ -117,8 +117,18 @@ formNFA (RegOr a b) =
       newStates = getStates nfaA `S.union` getStates nfaB `S.union` S.singleton newStart `S.union` S.singleton newEnd
       newMoves = S.unions [reduceList $ Prelude.map getMoves [nfaA, nfaB], newStartOldStart, oldEndNewEnd]
    in NFA newStates newMoves newStart (S.singleton newEnd)
-formNFA (RegAnd a b) = undefined
+formNFA (RegAnd a b) =
+  -- for and, we just connect a's end state to b's start state using empty transitions
+  let nfaA = formNFA a
+      nfaB = formNFA b
+      endA = getEnd nfaA
+      startB = getStart nfaB
+      endAStartB = reduceList $ Prelude.map (\startA -> formEmptyMoves startA [startB]) (S.toList endA)
+      newStates = getStates nfaA `S.union` getStates nfaB
+      newMoves = S.unions [getMoves nfaA, getMoves nfaB, endAStartB]
+   in NFA newStates newMoves (getStart nfaA) (getEnd nfaB)
 
+-- given a start and end state, make moves going from start to end using the empty transition
 formEmptyMoves :: (Ord a) => a -> [a] -> Moves a
 formEmptyMoves start = S.fromList . Prelude.map (EmptyMove start)
 
