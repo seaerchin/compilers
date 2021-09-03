@@ -3,7 +3,7 @@ module Nfa where
 -- containers is annoying b/c set doesn't have inbuilt typeclasses but provides functionality in its own lib
 -- means everytime i have to check the hackage docs to see if it exists instead of trusting compiler when it says that it doesn't
 import Data.Set as S
-import Parser (PostFix, RPN, Reg (RegLiteral, RegStar), parse)
+import Parser (PostFix, RPN, Reg (RegLiteral, RegOr, RegStar), parse)
 import Regex (fromParsed)
 
 -- with reference from: https://www.cs.kent.ac.uk/people/staff/sjt/craft2e/regExp.pdf
@@ -93,7 +93,21 @@ formNFA (RegStar exp) =
               oldEndOldStart = reduceList $ Prelude.map (\oldEnd -> formEmptyMoves oldEnd [start]) (S.toList end)
               oldEndNewEnd = reduceList $ Prelude.map (\oldEnd -> formEmptyMoves oldEnd [newEnd]) (S.toList end)
               newStartnewEnd = formEmptyMoves newStart [newEnd]
-           in NFA (S.singleton start `S.union` end `S.union` S.singleton newEnd `S.union` S.singleton newStart) (S.unions [newStartOldStart, newStartnewEnd, oldEndOldStart, oldEndNewEnd]) newStart (S.singleton newEnd)
+           in NFA (S.singleton start `S.union` end `S.union` S.singleton newEnd `S.union` S.singleton newStart) (S.unions [newStartOldStart, newStartnewEnd, oldEndOldStart, oldEndNewEnd, moves]) newStart (S.singleton newEnd)
+-- we add an artificial start (s)
+-- and an artificial end (e)
+-- next, allow empty transition from s -> old start
+-- and empty transition from old end -> e
+formNFA (RegOr a b) =
+  let nfaA = formNFA a
+      nfaB = formNFA b
+      newStart = minimum (Prelude.map getStart [nfaA, nfaB]) - 1
+      newEnd = S.findMax (S.unions $ Prelude.map getEnd [nfaA, nfaB]) + 1
+      newStartOldStart = formEmptyMoves newStart [getStart nfaA, getStart nfaB]
+      oldEndNewEnd = reduceList $ Prelude.map (`formEmptyMoves` [newEnd]) (S.toList (getEnd nfaA `S.union` getEnd nfaB))
+      newStates = getStates nfaA `S.union` getStates nfaB `S.union` S.singleton newStart `S.union` S.singleton newEnd
+      newMoves = S.unions [reduceList $ Prelude.map getMoves [nfaA, nfaB], newStartOldStart, oldEndNewEnd]
+   in NFA newStates newMoves newStart (S.singleton newEnd)
 formNFA _ = undefined
 
 formEmptyMoves :: (Ord a) => a -> [a] -> Moves a
@@ -103,3 +117,16 @@ reduceList :: (Foldable f, Ord a) => f (Moves a) -> Moves a
 reduceList = Prelude.foldr S.union S.empty
 
 mkNFA = print . formNFA . fromParsed . Parser.parse
+
+-- utility functions for extraction of parts of the NFA
+getStart :: NFA a -> Start a
+getStart (NFA _ _ s _) = s
+
+getMoves :: NFA a -> Moves a
+getMoves (NFA _ moves _ _) = moves
+
+getEnd :: NFA a -> End a
+getEnd (NFA _ _ _ end) = end
+
+getStates :: NFA a -> Intermediate a
+getStates (NFA st _ _ _) = st
