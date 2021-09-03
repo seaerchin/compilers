@@ -71,12 +71,12 @@ singleTransition (NFA _ moves _ _) c start = fromList [end | t <- toList start, 
 formNFA :: Reg -> NFA Int
 formNFA (RegLiteral c) =
   let chrRep = ord c
-      states = S.fromList [0, chrRep]
+      start = chrRep - 1
+      states = S.fromList [start, chrRep]
       moves =
         S.fromList
-          [ Move 0 c chrRep
+          [ Move start c chrRep
           ]
-      start = 0
       end = S.fromList [chrRep]
    in NFA states moves start end
 formNFA RegEmpty =
