@@ -148,6 +148,15 @@ toDFA nfa =
     -- each state in the stack is a state of the DFA
     constructSubset :: Intermediate a -> [Intermediate a] -> DFA a
     constructSubset state stack = undefined
+    -- given the intermediate state (S_i) and the transition,
+    -- this function will output all reachable states from S_i
+    dfaMove startSet c = S.map g (S.filter f (getMoves nfa))
+      where
+        -- finds the outgoing state with the given transition
+        f (EmptyMove _ _) = False
+        f (Move a char b) = a `S.member` startSet && char == c
+        g (Move _ _ b) = b
+        g (EmptyMove _ b) = b
 
 -- gets all empty transitions
 getEmptyTransitions :: (Ord a) => Intermediate a -> NFA a -> Intermediate a
