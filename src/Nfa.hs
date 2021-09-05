@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Nfa where
 
 -- containers is annoying b/c set doesn't have inbuilt typeclasses but provides functionality in its own lib
@@ -23,6 +25,11 @@ type Moves a = Set (Move a)
 
 -- a NFA is 4 things: intermediate states; moves; start state; end states
 data NFA a = NFA (Intermediate a) (Moves a) (Start a) (End a) deriving (Show)
+
+-- this is formally the same thing as an nfa but without empty transitions
+-- we could, alternatively, define 2 separate data types to model this
+-- this is less ideal but less work
+newtype DFA a = DFA {getDFA :: NFA a}
 
 -- a denotes the state
 -- a move is either a character from 1 state to another (can be the same) or an empty move
@@ -107,7 +114,7 @@ formNFA (RegStar exp) =
 -- and an artificial end (e)
 -- next, allow empty transition from s -> old start
 -- and empty transition from old end -> e
-formNFA (RegOr a b) =
+formNFA (RegOr b a) =
   let nfaA = formNFA a
       nfaB = formNFA b
       newStart = minimum (Prelude.map getStart [nfaA, nfaB]) - 1
@@ -117,7 +124,7 @@ formNFA (RegOr a b) =
       newStates = getStates nfaA `S.union` getStates nfaB `S.union` S.singleton newStart `S.union` S.singleton newEnd
       newMoves = S.unions [reduceList $ Prelude.map getMoves [nfaA, nfaB], newStartOldStart, oldEndNewEnd]
    in NFA newStates newMoves newStart (S.singleton newEnd)
-formNFA (RegAnd a b) =
+formNFA (RegAnd b a) =
   -- for and, we just connect a's end state to b's start state using empty transitions
   let nfaA = formNFA a
       nfaB = formNFA b
@@ -127,6 +134,44 @@ formNFA (RegAnd a b) =
       newStates = getStates nfaA `S.union` getStates nfaB
       newMoves = S.unions [getMoves nfaA, getMoves nfaB, endAStartB]
    in NFA newStates newMoves (getStart nfaA) (getEnd nfaB)
+
+-- this is the subset construction algo
+-- all empty transitions reachable from the first state are part of the same "state cluster"
+-- first, maintain a list, L, of states, S, which is initialized to start state of N (where N is the nfa)
+-- next, for all s in L,
+toDFA :: (Ord a) => NFA a -> DFA a
+toDFA nfa =
+  let start = getEmptyTransitions (getStates nfa) nfa
+      machine = NFA (S.singleton start) S.empty start S.empty
+   in constructSubset start []
+  where
+    -- each state in the stack is a state of the DFA
+    constructSubset :: Intermediate a -> [Intermediate a] -> DFA a
+    constructSubset state stack = undefined
+
+-- gets all empty transitions
+getEmptyTransitions :: (Ord a) => Intermediate a -> NFA a -> Intermediate a
+getEmptyTransitions states nfa =
+  let emptyMoves = S.filter isEmptyMove (getMoves nfa)
+      outgoingTransitions =
+        S.unions $
+          S.map
+            -- filter empty moves
+            ( \s ->
+                S.filter
+                  ( \case
+                      Move {} -> False
+                      EmptyMove s _ -> True
+                  )
+                  emptyMoves
+            )
+            states
+      outgoingSets = S.map (\(EmptyMove a b) -> b) outgoingTransitions
+   in S.filter (`S.member` outgoingSets) (getStates nfa)
+
+isEmptyMove :: Move a -> Bool
+isEmptyMove (EmptyMove _ _) = True
+isEmptyMove _ = False
 
 -- given a start and end state, make moves going from start to end using the empty transition
 formEmptyMoves :: (Ord a) => a -> [a] -> Moves a
